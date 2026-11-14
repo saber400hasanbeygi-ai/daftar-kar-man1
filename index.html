@@ -428,13 +428,3 @@ calc();
 </script>
 </body>
 </html>
-
- $('paymentsList').innerHTML=ps.length?
- ps.slice().reverse().map(p=>
- `<div class="job"><b>${p.account==='coworker'?'حساب همکار':'حساب مشتری'} - ${esc(p.customer)}</b>
- <p>${money(p.amount)} - ${esc(p.date)}</p>
- <p>${esc(p.note)}</p>
- <button class="danger" onclick="deletePayment('${p.jid}','${p.id}')">حذف پرداخت</button></div>`
- ).join(''):'<p class="empty">پرداختی ثبت نشده.</p>';
-}
-</script>
