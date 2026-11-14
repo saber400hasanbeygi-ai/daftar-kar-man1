@@ -424,7 +424,156 @@ $('paymentsList').innerHTML=ps.length?
  ).join(''):'<p class="empty">پرداختی ثبت نشده.</p>';
 }
 
-render();
+// ===== امکانات تاریخ تحویل و دفتر کل حساب‌ها =====
+
+// ذخیره تاریخ تحویل همراه سفارش
+const oldJobSubmit = $('jobForm').onsubmit;
+
+$('jobForm').onsubmit = function(e) {
+  const id = $('editId').value;
+  const delivery = dateClean($('deliveryDate').value);
+
+  oldJobSubmit.call(this, e);
+
+  const job = id
+    ? data.jobs.find(j => j.id === id)
+    : data.jobs[0];
+
+  if (job) {
+    job.deliveryDate = delivery;
+    save();
+  }
+};
+
+// نمایش تاریخ تحویل هنگام ویرایش سفارش
+const oldEditJob = window.editJob;
+
+window.editJob = function(id) {
+  oldEditJob(id);
+
+  const job = data.jobs.find(j => j.id === id);
+  $('deliveryDate').value = job?.deliveryDate || '';
+};
+
+// ساخت بخش دفتر کل
+$('accounts').insertAdjacentHTML('beforeend', `
+<div class="panel">
+<h2>دفتر کل حساب‌ها</h2>
+<label>نوع حساب</label>
+<select id="ledgerType">
+<option value="customer">حساب مشتری</option>
+<option value="coworker">حساب همکار</option>
+</select>
+<label>جست‌وجوی نام</label>
+<input id="ledgerSearch" placeholder="نام مشتری یا همکار">
+<div id="ledgerResult"></div>
+</div>
+<div class="panel">
+<h2>وضعیت تحویل سفارش‌ها</h2>
+<div id="deliveryStatusList"></div>
+</div>
+`);
+
+// نمایش دفتر کل
+function renderLedger() {
+  const type = $('ledgerType').value;
+  const search = $('ledgerSearch').value.trim().toLowerCase();
+  const groups = {};
+
+  data.jobs.forEach(j => {
+    const name = type === 'customer' ? j.customer : j.coworker;
+    if (!name || !name.toLowerCase().includes(search)) return;
+
+    if (!groups[name]) groups[name] = {
+      jobs: [],
+      total: 0,
+      paid: 0
+    };
+
+    const amount = type === 'customer'
+      ? sums(j).under
+      : sums(j).install;
+
+    groups[name].jobs.push(j);
+    groups[name].total += amount;
+    groups[name].paid += paid(j, type);
+  });
+
+  const names = Object.keys(groups);
+
+  $('ledgerResult').innerHTML = names.length
+    ? names.map(name => {
+        const g = groups[name];
+
+        return `
+        <div class="job">
+          <h3>${esc(name)}</h3>
+          <div>کل مبلغ حساب: ${money(g.total)}</div>
+          <div>پرداخت‌شده: ${money(g.paid)}</div>
+          <div>مانده حساب: ${money(g.total - g.paid)}</div>
+          <hr>
+          ${g.jobs.map(j => {
+            const amount = type === 'customer'
+              ? sums(j).under
+              : sums(j).install;
+
+            const payments = (j.payments || [])
+              .filter(p => p.account === type);
+
+            return `
+            <div>
+              <b>سفارش: ${esc(j.customer)}</b>
+              <p>مبلغ سفارش: ${money(amount)}</p>
+              <p>تاریخ تحویل: ${
+                j.deliveryDate
+                  ? esc(j.deliveryDate)
+                  : 'تحویل نشده'
+              }</p>
+              ${payments.map(p => `
+                <p>
+                  پرداخت: ${money(p.amount)}
+                  | تاریخ: ${esc(p.date)}
+                  | توضیح: ${esc(p.note || 'بدون توضیح')}
+                </p>
+              `).join('')}
+            </div>
+            <hr>`;
+          }).join('')}
+        </div>`;
+      }).join('')
+    : '<p>موردی پیدا نشد.</p>';
+}
+
+// نمایش وضعیت تحویل
+function renderDeliveryStatus() {
+  $('deliveryStatusList').innerHTML = data.jobs.length
+    ? data.jobs.map(j => `
+      <div class="job">
+        <b>${esc(j.customer)}</b>
+        <p>همکار: ${esc(j.coworker)}</p>
+        <p>${
+          j.deliveryDate
+            ? 'تحویل شده - ' + esc(j.deliveryDate)
+            : 'تحویل نشده'
+        }</p>
+      </div>
+    `).join('')
+    : '<p>سفارشی ثبت نشده.</p>';
+}
+
+$('ledgerType').onchange = renderLedger;
+$('ledgerSearch').oninput = renderLedger;
+
+const oldRenderWithLedger = render;
+
+render = function() {
+  oldRenderWithLedger();
+  renderLedger();
+  renderDeliveryStatus();
+};
+
+// ===== پایان امکانات جدید =====
+ render();
 calc();
 </script>
 </body>
