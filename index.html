@@ -235,6 +235,191 @@ function render(){
  data.jobs.forEach(j=>(j.payments||[]).forEach(p=>
  ps.push({...p,jid:j.id,customer:j.customer})
  ));
+ 
+$('addPayment').onclick=()=>{
+ let j=data.jobs.find(x=>x.id===$('paymentJob').value);
+ let amount=n($('paymentAmount').value);
+ let date=dateClean($('paymentDate').value);
+ if(!j)return alert('ابتدا سفارش ثبت کن.');
+ if(amount<=0||!date)return alert('مبلغ و تاریخ معتبر وارد کن.');
+ let a=$('paymentAccount').value;
+ let limit=a==='coworker'?sums(j).install:sums(j).under;
+ if(paid(j,a)+amount>limit&&!confirm('پرداخت از مبلغ این حساب بیشتر می‌شود. ادامه می‌دهی؟'))return;
+ j.payments=j.payments||[];
+ j.payments.push({
+  id:Date.now().toString(36),
+  account:a,
+  amount,
+  date,
+  note:$('paymentNote').value
+ });
+ $('paymentAmount').value='';
+ $('paymentNote').value='';
+ save();
+ alert('پرداخت ثبت شد.');
+};
+
+function deletePayment(jid,pid){
+ if(confirm('پرداخت حذف شود؟')){
+  let j=data.jobs.find(x=>x.id===jid);
+  j.payments=j.payments.filter(p=>p.id!==pid);
+  save();
+ }
+}
+
+$('addMove').onclick=()=>{
+ let coworker=$('moveCoworker').value.trim();
+ let amount=n($('moveAmount').value);
+ let date=dateClean($('moveDate').value);
+ let details=$('moveDetails').value.trim();
+ if(!coworker||!date||!details)
+  return alert('نام همکار، تاریخ و جزئیات را وارد کن.');
+ data.moves.push({
+  id:Date.now().toString(36),
+  coworker,amount,date,details
+ });
+ ['moveCoworker','moveAmount','moveDate','moveDetails']
+ .forEach(x=>$(x).value='');
+ save();
+ alert('جزئیات ثبت شد.');
+};
+
+function deleteMove(id){
+ if(confirm('یادداشت حذف شود؟')){
+  data.moves=data.moves.filter(m=>m.id!==id);
+  save();
+ }
+}
+
+$('makeReport').onclick=()=>{
+ let y=digits($('reportYear').value).trim();
+ let m=digits($('reportMonth').value).trim().padStart(2,'0');
+ if(!/^\d{4}$/.test(y)||!/^0[1-9]$|^1[0-2]$/.test(m))
+  return alert('سال و ماه را درست وارد کن.');
+ let key=y+'/'+m;
+ let done=data.jobs.filter(j=>month(j.workDate)===key);
+ let wi=0,wu=0,ri=0,ru=0;
+ done.forEach(j=>{
+  let s=sums(j);
+  wi+=s.install;
+  wu+=s.under;
+ });
+ data.jobs.forEach(j=>(j.payments||[]).forEach(p=>{
+  if(month(p.date)===key){
+   if(p.account==='coworker')ri+=n(p.amount);
+   else ru+=n(p.amount);
+  }
+ }));
+ $('reportResult').innerHTML=`
+ <hr><h3>کارکرد ماه ${y}/${m}</h3>
+ <p>دستمزد نصب (همکار): <b>${money(wi)}</b></p>
+ <p>زیرسازی (مشتری): <b>${money(wu)}</b></p>
+ <p>جمع کارکرد: <b>${money(wi+wu)}</b></p>
+ <hr><h3>دریافتی‌های همین ماه</h3>
+ <p>از حساب همکار: <b>${money(ri)}</b></p>
+ <p>از حساب مشتری: <b>${money(ru)}</b></p>
+ <p>جمع دریافتی: <b>${money(ri+ru)}</b></p>`;
+};
+
+function calendarJob(id){
+ let j=data.jobs.find(x=>x.id===id);
+ if(!j)return;
+ let a=dateClean(j.appointmentDate);
+ if(!a)return alert('تاریخ نوبت را بررسی کن.');
+ let [jy,jm,jd]=a.split('/').map(Number);
+ let start=null;
+ let base=new Date(Date.UTC(jy+621,2,19));
+ for(let z=0;z<370;z++){
+  let x=new Date(base.getTime()+z*86400000);
+  let parts=new Intl.DateTimeFormat('en-u-ca-persian',{
+   year:'numeric',month:'numeric',day:'numeric',timeZone:'UTC'
+  }).formatToParts(x);
+  let v={};
+  parts.forEach(t=>v[t.type]=Number(t.value));
+  if(v.year===jy&&v.month===jm&&v.day===jd){
+   start=x;break;
+  }
+ }
+ if(!start)return alert('تبدیل تاریخ انجام نشد.');
+ let [h,mi]=(j.appointmentTime||'09:00').split(':').map(Number);
+ start.setUTCHours(h- Math.floor((new Date().getTimezoneOffset())/60),mi,0,0);
+ let end=new Date(start.getTime()+3600000);
+ function stamp(d){
+  return d.getUTCFullYear()+
+  String(d.getUTCMonth()+1).padStart(2,'0')+
+  String(d.getUTCDate()).padStart(2,'0')+'T'+
+  String(d.getUTCHours()).padStart(2,'0')+
+  String(d.getUTCMinutes()).padStart(2,'0')+'00Z';
+ }
+ let ics=`BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//Daftar Kar Man//FA
+BEGIN:VEVENT
+UID:${id}@daftarkarman
+DTSTAMP:${stamp(new Date())}
+DTSTART:${stamp(start)}
+DTEND:${stamp(end)}
+SUMMARY:نصب کاغذ دیواری - ${j.customer}
+BEGIN:VALARM
+TRIGGER:-P1D
+ACTION:DISPLAY
+DESCRIPTION:یادآوری نوبت فردا
+END:VALARM
+BEGIN:VALARM
+TRIGGER:-PT1H
+ACTION:DISPLAY
+DESCRIPTION:یادآوری یک ساعت قبل
+END:VALARM
+END:VEVENT
+END:VCALENDAR`;
+ let blob=new Blob([ics],{type:'text/calendar;charset=utf-8'});
+ let url=URL.createObjectURL(blob);
+ let link=document.createElement('a');
+ link.href=url;
+ link.download='appointment.ics';
+ link.click();
+ setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+
+$('exportBackup').onclick=()=>{
+ let blob=new Blob([JSON.stringify(data,null,2)],{
+  type:'application/json'
+ });
+ let url=URL.createObjectURL(blob);
+ let a=document.createElement('a');
+ a.href=url;
+ a.download='daftar-kar-man-backup.json';
+ a.click();
+ setTimeout(()=>URL.revokeObjectURL(url),1000);
+};
+
+$('importFile').onchange=e=>{
+ let f=e.target.files[0];
+ if(!f)return;
+ let r=new FileReader();
+ r.onload=()=>{
+  try{
+   let x=JSON.parse(r.result);
+   if(!Array.isArray(x.jobs)||!Array.isArray(x.moves))
+    throw Error();
+   if(confirm('اطلاعات فعلی جایگزین شود؟')){
+    data=x;
+    save();
+    alert('بازیابی انجام شد.');
+   }
+  }catch(err){
+   alert('فایل پشتیبان معتبر نیست.');
+  }
+ };
+ r.readAsText(f);
+};
+
+render();
+calc();
+</script>
+</body>
+</html>
+
  $('paymentsList').innerHTML=ps.length?
  ps.slice().reverse().map(p=>
  `<div class="job"><b>${p.account==='coworker'?'حساب همکار':'حساب مشتری'} - ${esc(p.customer)}</b>
