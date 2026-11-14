@@ -24,3 +24,223 @@
 <div class="panel"><h2>حساب همکار</h2><p class="small">دستمزد نصب کاغذ دیواری به عهده همکار است.</p><div class="stats"><div class="stat"><span>کل دستمزد نصب</span><strong id="cowTotal">۰</strong></div><div class="stat"><span>پرداخت‌شده</span><strong id="cowPaid">۰</strong></div><div class="stat"><span>مانده</span><strong id="cowRemain">۰</strong></div></div></div>
 <div class="panel"><h2>حساب مشتری</h2><p class="small">هزینه زیرسازی به عهده مشتری است.</p><div class="stats"><div class="stat"><span>کل زیرسازی</span><strong id="cusTotal">۰</strong></div><div class="stat"><span>پرداخت‌شده</span><strong id="cusPaid">۰</strong></div><div class="stat"><span>مانده</span><strong id="cusRemain">۰</strong></div></div></div>
 <div class="panel"><h2>ثبت پرداخت</h2><label>انتخاب سفارش</label><select id="paymentJob"></select><label>پرداخت مربوط به</label><select id="paymentAccount"><option value="coworker">همکار - دستمزد نصب</option><option value="customer">مشتری - زیرسازی</option></select><label>مبلغ پرداخت (تومان)</label><input id="paymentAmount" type="number" min="1"><label>تاریخ پرداخت شمسی</label><input id="paymentDate" placeholder="۱۴۰۵/۰۸/۲۳"><label>توضیح</label><input id="paymentNote">
+
+<button class="primary" id="addPayment">ثبت پرداخت</button></div>
+<div class="panel"><h2>جزئیات جابه‌جایی پول</h2>
+<p class="small">توضیحات آزاد درباره جابه‌جایی پول با همکار.</p>
+<label>نام همکار</label><input id="moveCoworker">
+<label>مبلغ (تومان)</label><input id="moveAmount" type="number" min="0">
+<label>تاریخ شمسی</label><input id="moveDate" placeholder="۱۴۰۵/۰۸/۲۳">
+<label>جزئیات</label><textarea id="moveDetails" placeholder="مثلاً علی مبلغی بابت دو سفارش قبلی جابه‌جا کرد..."></textarea>
+<button class="primary" id="addMove">ثبت جزئیات</button><div id="movesList"></div></div>
+<div class="panel"><h2>سوابق پرداخت‌ها</h2><div id="paymentsList"></div></div>
+</section>
+
+<section id="report" class="page">
+<div class="panel"><h2>گزارش ماهانه</h2>
+<label>سال شمسی</label><input id="reportYear" inputmode="numeric" placeholder="۱۴۰۵">
+<label>ماه شمسی</label><input id="reportMonth" inputmode="numeric" placeholder="۰۸">
+<button class="primary" id="makeReport">نمایش گزارش</button>
+<div id="reportResult"></div></div>
+</section>
+
+<section id="backup" class="page">
+<div class="panel"><h2>پشتیبان اطلاعات</h2>
+<p>اطلاعات روی همین گوشی ذخیره می‌شود. برای جلوگیری از پاک شدن، نسخه پشتیبان بگیر.</p>
+<button class="primary" id="exportBackup">دانلود نسخه پشتیبان</button>
+<label>بازیابی نسخه پشتیبان</label>
+<input id="importFile" type="file" accept=".json,application/json">
+<p class="small">بازیابی، اطلاعات فعلی را جایگزین می‌کند.</p>
+</div></section>
+</main>
+
+<script>
+const KEY='daftarKarMan_v2';
+let data;
+try{
+ data=JSON.parse(localStorage.getItem(KEY))||{jobs:[],moves:[]};
+}catch(e){data={jobs:[],moves:[]};}
+
+const $=id=>document.getElementById(id);
+const n=v=>Number(v)||0;
+
+function money(v){
+ return Math.round(n(v)).toLocaleString('fa-IR')+' تومان';
+}
+function digits(s){
+ return String(s||'')
+ .replace(/[۰-۹]/g,d=>'۰۱۲۳۴۵۶۷۸۹'.indexOf(d))
+ .replace(/[٠-٩]/g,d=>'٠١٢٣٤٥٦٧٨٩'.indexOf(d));
+}
+function dateClean(s){
+ let a=digits(s).trim().replaceAll('-','/').split('/');
+ if(a.length!==3)return '';
+ let [y,m,d]=a.map(Number);
+ return y&&m>=1&&m<=12&&d>=1&&d<=31?
+ `${y}/${String(m).padStart(2,'0')}/${String(d).padStart(2,'0')}`:'';
+}
+function month(s){
+ let d=dateClean(s);
+ return d?d.slice(0,7):'';
+}
+function esc(s){
+ return String(s??'').replace(/[&<>"']/g,c=>({
+ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+ }[c]));
+}
+function save(){
+ localStorage.setItem(KEY,JSON.stringify(data));
+ render();
+}
+function sums(j){
+ return {
+ install:n(j.rolls)*n(j.installPrice),
+ under:n(j.underArea)*n(j.underPrice)
+ };
+}
+function paid(j,a){
+ return (j.payments||[])
+ .filter(p=>p.account===a)
+ .reduce((s,p)=>s+n(p.amount),0);
+}
+function calc(){
+ let i=n($('rolls').value)*n($('installPrice').value);
+ let u=n($('underArea').value)*n($('underPrice').value);
+ $('calcInstall').textContent=money(i);
+ $('calcUnder').textContent=money(u);
+ $('calcTotal').textContent=money(i+u);
+}
+['rolls','installPrice','underArea','underPrice']
+.forEach(x=>$(x).addEventListener('input',calc));
+
+document.querySelectorAll('nav button').forEach(b=>{
+ b.onclick=()=>{
+  document.querySelectorAll('nav button,.page')
+  .forEach(x=>x.classList.remove('active'));
+  b.classList.add('active');
+  $(b.dataset.page).classList.add('active');
+  render();
+ };
+});
+
+function resetForm(){
+ $('jobForm').reset();
+ $('editId').value='';
+ $('formTitle').textContent='ثبت سفارش جدید';
+ $('cancelEdit').classList.add('hidden');
+ calc();
+}
+$('cancelEdit').onclick=resetForm;
+
+$('jobForm').onsubmit=e=>{
+ e.preventDefault();
+ let eid=$('editId').value;
+ let old=data.jobs.find(j=>j.id===eid);
+ let j={
+ id:eid||Date.now().toString(36),
+ customer:$('customer').value.trim(),
+ phone:$('phone').value,
+ coworker:$('coworker').value.trim(),
+ address:$('address').value,
+ rolls:n($('rolls').value),
+ installPrice:n($('installPrice').value),
+ underArea:n($('underArea').value),
+ underPrice:n($('underPrice').value),
+ appointmentDate:dateClean($('appointmentDate').value),
+ appointmentTime:$('appointmentTime').value,
+ workDate:dateClean($('workDate').value),
+ details:$('details').value,
+ payments:old?.payments||[]
+ };
+ if(old)data.jobs=data.jobs.map(x=>x.id===eid?j:x);
+ else data.jobs.unshift(j);
+ resetForm();
+ save();
+ alert('سفارش ذخیره شد.');
+};
+
+function editJob(id){
+ let j=data.jobs.find(x=>x.id===id);
+ if(!j)return;
+ ['customer','phone','coworker','address','rolls','installPrice',
+ 'underArea','underPrice','appointmentDate','appointmentTime',
+ 'workDate','details'].forEach(k=>$(k).value=j[k]??'');
+ $('editId').value=id;
+ $('formTitle').textContent='ویرایش سفارش';
+ $('cancelEdit').classList.remove('hidden');
+ document.querySelector('[data-page=add]').click();
+ calc();
+}
+function deleteJob(id){
+ if(confirm('سفارش و پرداخت‌های آن حذف شود؟')){
+  data.jobs=data.jobs.filter(j=>j.id!==id);
+  save();
+ }
+}
+
+function render(){
+ let i=0,u=0;
+ data.jobs.forEach(j=>{
+  let s=sums(j);i+=s.install;u+=s.under;
+ });
+ $('count').textContent=data.jobs.length.toLocaleString('fa-IR');
+ $('installSum').textContent=money(i);
+ $('underSum').textContent=money(u);
+ $('totalSum').textContent=money(i+u);
+
+ $('jobsList').innerHTML=data.jobs.length?
+ data.jobs.map(j=>{
+ let s=sums(j);
+ return `<div class="job">
+ <h3>${esc(j.customer)} <span class="tag">${esc(j.coworker)}</span></h3>
+ <div class="jobline"><span>نوبت</span><b>${esc(j.appointmentDate)} ${esc(j.appointmentTime)}</b></div>
+ <div class="jobline"><span>تعداد رول</span><b>${j.rolls}</b></div>
+ <div class="jobline"><span>نصب - حساب همکار</span><b>${money(s.install)}</b></div>
+ <div class="jobline"><span>زیرسازی - حساب مشتری</span><b>${money(s.under)}</b></div>
+ <div class="jobline"><b>جمع کل</b><b class="money">${money(s.install+s.under)}</b></div>
+ <p class="small">${esc(j.address)} ${esc(j.details)}</p>
+ <div class="actions">
+ <button class="secondary" onclick="editJob('${j.id}')">ویرایش</button>
+ <button class="secondary" onclick="calendarJob('${j.id}')">یادآوری تقویم</button>
+ <button class="danger" onclick="deleteJob('${j.id}')">حذف</button>
+ </div></div>`;
+ }).join(''):'<div class="empty">هنوز سفارشی ثبت نکرده‌ای.</div>';
+
+ let ct=0,cp=0,ut=0,up=0;
+ data.jobs.forEach(j=>{
+  let s=sums(j);
+  ct+=s.install;ut+=s.under;
+  cp+=paid(j,'coworker');up+=paid(j,'customer');
+ });
+ $('cowTotal').textContent=money(ct);
+ $('cowPaid').textContent=money(cp);
+ $('cowRemain').textContent=money(ct-cp);
+ $('cusTotal').textContent=money(ut);
+ $('cusPaid').textContent=money(up);
+ $('cusRemain').textContent=money(ut-up);
+
+ $('paymentJob').innerHTML=data.jobs.map(j=>
+ `<option value="${j.id}">${esc(j.customer)} - ${esc(j.coworker)}</option>`
+ ).join('');
+
+ $('movesList').innerHTML=data.moves.length?
+ data.moves.slice().reverse().map(m=>
+ `<div class="job"><b>${esc(m.coworker)}</b>
+ <p>${money(m.amount)} - ${esc(m.date)}</p>
+ <p>${esc(m.details)}</p>
+ <button class="danger" onclick="deleteMove('${m.id}')">حذف</button></div>`
+ ).join(''):'<p class="empty">یادداشتی ثبت نشده.</p>';
+
+ let ps=[];
+ data.jobs.forEach(j=>(j.payments||[]).forEach(p=>
+ ps.push({...p,jid:j.id,customer:j.customer})
+ ));
+ $('paymentsList').innerHTML=ps.length?
+ ps.slice().reverse().map(p=>
+ `<div class="job"><b>${p.account==='coworker'?'حساب همکار':'حساب مشتری'} - ${esc(p.customer)}</b>
+ <p>${money(p.amount)} - ${esc(p.date)}</p>
+ <p>${esc(p.note)}</p>
+ <button class="danger" onclick="deletePayment('${p.jid}','${p.id}')">حذف پرداخت</button></div>`
+ ).join(''):'<p class="empty">پرداختی ثبت نشده.</p>';
+}
+</script>
