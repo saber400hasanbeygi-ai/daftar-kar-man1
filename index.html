@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#176b45">
+<title>دفتر کار من</title>
+<style>
+body{font-family:Tahoma,sans-serif;background:#f2f5f3;margin:0;padding:16px;color:#222}
+header{background:#176b45;color:white;padding:20px;border-radius:15px;text-align:center}
+.card{background:white;padding:16px;border-radius:14px;margin-top:15px;box-shadow:0 2px 8px #ddd}
+input,textarea,button{box-sizing:border-box;width:100%;padding:12px;margin:6px 0;border:1px solid #ccc;border-radius:9px;font:inherit}
+button{background:#176b45;color:white;border:0;font-weight:bold}
+.delete{background:#b52b2b}.edit{background:#555}.calendar{background:#176b45}
+.job{border:1px solid #ddd;border-radius:10px;padding:12px;margin:12px 0}
+small{color:#555}
+</style>
+</head>
+<body>
+<header>
+<h2>دفتر کار من</h2>
+<p>مدیریت سفارش‌های نصب کاغذ دیواری</p>
+</header>
+
+<div class="card">
+<h3 id="formTitle">ثبت سفارش جدید</h3>
+<form id="jobForm">
+<input id="name" placeholder="نام مشتری" required>
+<input id="phone" placeholder="شماره تماس" type="tel">
+<input id="address" placeholder="آدرس محل کار">
+<input id="details" placeholder="توضیحات کار">
+<input id="meters" type="number" placeholder="متراژ (متر)">
+<input id="price" type="number" placeholder="مبلغ دستمزد (تومان)">
+<label>تاریخ و ساعت قرار:</label>
+<input id="date" type="datetime-local" required>
+<button type="submit">ذخیره سفارش</button>
+</form>
+</div>
+
+<div class="card">
+<h3>سفارش‌های من</h3>
+<div id="jobs"></div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+let jobs = JSON.parse(localStorage.getItem("wallpaperJobs") || "[]");
+let editing = null;
+
+function save(){
+ localStorage.setItem("wallpaperJobs",JSON.stringify(jobs));
+ render();
+}
+
+function esc(s){
+ return String(s ?? "").replace(/[&<>"']/g,c=>({
+ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
+ })[c]);
+}
+
+function render(){
+ $("jobs").innerHTML = jobs.length ? "" : "<p>هنوز سفارشی ثبت نکرده‌ای.</p>";
+ jobs.forEach((j,i)=>{
+  const d = new Date(j.date);
+  $("jobs").innerHTML += `
+  <div class="job">
+   <b>${esc(j.name)}</b><br>
+   <small>تاریخ: ${d.toLocaleString("fa-IR")}</small>
+   <p>تلفن: ${esc(j.phone)}</p>
+   <p>آدرس: ${esc(j.address)}</p>
+   <p>توضیحات: ${esc(j.details)}</p>
+   <p>متراژ: ${esc(j.meters)} متر</p>
+   <p>دستمزد: ${esc(j.price)} تومان</p>
+   ${j.phone ? `<a href="tel:${encodeURIComponent(j.phone)}">تماس با مشتری</a>` : ""}
+   <button class="edit" onclick="editJob(${i})">ویرایش</button>
+   <button class="calendar" onclick="calendarJob(${i})">دریافت یادآوری تقویم</button>
+   <button class="delete" onclick="deleteJob(${i})">حذف سفارش</button>
+  </div>`;
+ });
+}
+
+$("jobForm").addEventListener("submit",e=>{
+ e.preventDefault();
+ const j={
+  name:$("name").value,
+  phone:$("phone").value,
+  address:$("address").value,
+  details:$("details").value,
+  meters:$("meters").value,
+  price:$("price").value,
+  date:$("date").value
+ };
+ if(editing===null) jobs.push(j);
+ else jobs[editing]=j;
+ editing=null;
+ $("jobForm").reset();
+ $("formTitle").textContent="ثبت سفارش جدید";
+ save();
+});
+
+function editJob(i){
+ const j=jobs[i];
+ ["name","phone","address","details","meters","price","date"].forEach(k=>$(k).value=j[k]||"");
+ editing=i;
+ $("formTitle").textContent="ویرایش سفارش";
+ window.scrollTo(0,0);
+}
+
+function deleteJob(i){
+ if(confirm("این سفارش حذف شود؟")){
+  jobs.splice(i,1);
+  save();
+ }
+}
+
+function calendarJob(i){
+ const j=jobs[i];
+ const start=j.date.replace(/[-:T]/g,"")+"00";
+ const end=new Date(new Date(j.date).getTime()+60*60*1000);
+ const pad=n=>String(n).padStart(2,"0");
+ const endDate=end.getFullYear()+pad(end.getMonth()+1)+pad(end.getDate())+
+ pad(end.getHours())+pad(end.getMinutes())+"00";
+ const clean=s=>String(s||"").replace(/\\/g,"\\\\").replace(/;/g,"\\;").replace(/,/g,"\\,").replace(/\n/g,"\\n");
+ const ics=[
+ "BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//Daftar Kar Man//FA",
+ "BEGIN:VEVENT","UID:job-"+Date.now()+"@daftarkarman",
+ "DTSTART:"+start,"DTEND:"+endDate,
+ "SUMMARY:"+clean("نصب کاغذ دیواری - "+j.name),
+ "DESCRIPTION:"+clean("تلفن: "+j.phone+" | آدرس: "+j.address+" | "+j.details),
+ "BEGIN:VALARM","TRIGGER:-P1D","ACTION:DISPLAY",
+ "DESCRIPTION:یادآوری قرار فردا","END:VALARM",
+ "BEGIN:VALARM","TRIGGER:-PT1H","ACTION:DISPLAY",
+ "DESCRIPTION:یادآوری قرار یک ساعت دیگر","END:VALARM",
+ "END:VEVENT","END:VCALENDAR"
+ ].join("\r\n");
+ const blob=new Blob([ics],{type:"text/calendar;charset=utf-8"});
+ const url=URL.createObjectURL(blob);
+ const a=document.createElement("a");
+ a.href=url;a.download="appointment.ics";a.click();
+ URL.revokeObjectURL(url);
+}
+render();
+</script>
+</body>
+</html>
