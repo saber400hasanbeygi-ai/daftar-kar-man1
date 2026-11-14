@@ -16,6 +16,13 @@ if ("serviceWorker" in navigator) {
   });
 }
 </script>
+<script>
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("sw.js");
+  });
+}
+</script>
  <body>
 <header><h1>دفتر کار من</h1><p>مدیریت سفارش‌ها، نوبت‌ها و حساب همکار و مشتری</p></header>
 <nav><button class="active" data-page="home">داشبورد</button><button data-page="add">ثبت سفارش</button><button data-page="accounts">حساب‌ها</button><button data-page="report">گزارش ماهانه</button><button data-page="backup">پشتیبان</button></nav>
