@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="theme-color" content="#176b57">
+<meta name="theme-color" content="#151515">
 <meta name="description" content="مدیریت سفارش‌های نصب کاغذ دیواری، نوبت‌ها و حسابداری">
 <link rel="manifest" href="manifest.json">
 <title>DecoArt | دفتر کار</title>
@@ -29,6 +29,38 @@ button.secondary,button.danger{border:0;border-radius:8px;padding:9px 12px;font:
 .date-wrap{position:relative}.calendar-pop{position:absolute;z-index:20;top:100%;right:0;left:0;background:#fff;border:1px solid #d6dfda;border-radius:12px;padding:10px;box-shadow:0 8px 24px #0002}.cal-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px}.cal-head button,.cal-day{border:0;border-radius:7px;padding:8px;background:#e8efec;color:#176b57;font:inherit}.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;text-align:center}.cal-day{padding:9px 2px}.cal-day:disabled{opacity:.25}.cal-day.selected{background:#176b57;color:white}.cal-week{font-size:11px;color:#687771;padding:5px 0}.scroll-list{max-height:260px;overflow-y:auto;overscroll-behavior:contain}.empty{text-align:center;padding:22px;color:#738078}.notice{background:#fff8e7;border-radius:9px;padding:11px;color:#755a16;font-size:12px;line-height:1.9;margin:10px 0}
 hr{border:0;border-top:1px solid #edf0ee;margin:13px 0}.hidden{display:none!important}
 @media(max-width:420px){.stats{grid-template-columns:1fr 1fr}.grid{grid-template-columns:1fr 1fr}}
+
+/* DecoArt dark premium theme */
+:root{color-scheme:dark;--bg:#101112;--surface:#1b1d20;--surface2:#24272b;--gold:#d6ad55;--gold2:#f0cf82;--text:#f3f1eb;--muted:#aaa69c;--line:#383a3d}
+body{background:var(--bg);color:var(--text)}
+header{background:linear-gradient(135deg,#111214 0%,#25211a 55%,#171819 100%);color:#fff;padding:27px 16px;border-bottom:1px solid #80632f;box-shadow:0 5px 22px #0008}
+header h1{font-size:27px;letter-spacing:1px;color:var(--gold2);text-shadow:0 2px 12px #d6ad5533}
+header p{color:#d1c7b2}
+nav{background:#17191b;border-bottom:1px solid #39332a;box-shadow:0 4px 14px #0005}
+nav button{background:#26282b;color:#d8c18c;border:1px solid #39352d;border-radius:10px}
+nav button.active{background:linear-gradient(135deg,#c39a48,#e2c477);color:#171513;border-color:#e2c477;box-shadow:0 3px 12px #c39a4833}
+.panel,.job,.stat{background:linear-gradient(145deg,#202226,#191b1e);border:1px solid #34363a;border-radius:15px;box-shadow:0 5px 18px #0004}
+h2{color:var(--gold2)}h3{color:#e8d7ae}
+label{color:#e4dfd4}
+input,textarea,select{background:#151719;color:var(--text);border:1px solid #44474b;border-radius:10px;accent-color:var(--gold)}
+input::placeholder,textarea::placeholder{color:#77766f}
+input:focus,textarea:focus,select:focus{outline:none;border-color:var(--gold);box-shadow:0 0 0 2px #d6ad5522}
+button.primary{background:linear-gradient(135deg,#bd9140,#e3c477);color:#171513;border:0;box-shadow:0 4px 12px #bd914033}
+button.secondary{background:#34363a;color:#f0d18a;border:1px solid #51452f}
+button.danger{background:#492827;color:#ffb7ae;border:1px solid #70403b}
+.jobline span:first-child,.small,.stat span{color:var(--muted)}
+.stat strong,.money{color:var(--gold2)}
+.tag{background:#3c3322;color:#f0d18a;border:1px solid #66512d}
+.calendar-pop{background:#202226;color:var(--text);border:1px solid #62502e;box-shadow:0 10px 28px #0009}
+.cal-head button,.cal-day{background:#34363a;color:#f0d18a}
+.cal-day.selected{background:var(--gold);color:#171513}
+.cal-week{color:#c5b58e}
+.empty{color:#aaa69c}
+.notice{background:#332b1c;color:#ead39c;border:1px solid #66512d}
+hr,.job-meta .meta-row{border-color:#383a3d}
+.scroll-list{scrollbar-color:#806638 #202226}
+@media(hover:hover){nav button:not(.active):hover,button.secondary:hover{background:#393a3d}}
+
 </style>
 </head>
 <body>
