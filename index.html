@@ -206,7 +206,17 @@ function openJalaliPicker(id){let box=$('cal-'+id);document.querySelectorAll('.c
 function drawJalali(id,y,m,selected){let box=$('cal-'+id),first=jalaliToDate(y,m,1);if(!first)return;let weekday=(first.getUTCDay()+1)%7,days=0;while(days<31&&jalaliToDate(y,m,days+1))days++;let html=`<div class="cal-head"><button type="button" onclick="shiftJalali('${id}',${y},${m},-1)">‹</button><b>${jalaliMonths[m-1]} ${y.toLocaleString('fa-IR')}</b><button type="button" onclick="shiftJalali('${id}',${y},${m},1)">›</button></div><div class="cal-grid">${['ش','ی','د','س','چ','پ','ج'].map(x=>`<span class="cal-week">${x}</span>`).join('')}`;for(let i=0;i<weekday;i++)html+='<span></span>';for(let d=1;d<=days;d++)html+=`<button type="button" class="cal-day ${d===selected?'selected':''}" onclick="chooseJalali('${id}',${y},${m},${d})">${d.toLocaleString('fa-IR')}</button>`;box.innerHTML=html+'</div>';}
 function shiftJalali(id,y,m,step){m+=step;if(m<1){m=12;y--;}if(m>12){m=1;y++;}drawJalali(id,y,m,0);}
 function chooseJalali(id,y,m,d){$(id).value=`${y}/${String(m).padStart(2,'0')}/${String(d).padStart(2,'0')}`;$('cal-'+id).classList.add('hidden');}
-document.addEventListener('click',e=>{if(!e.target.closest('.date-wrap'))document.querySelectorAll('.calendar-pop').forEach(x=>x.classList.add('hidden'));});
+
+document.addEventListener('click', function(e) {
+  if (e.target.closest('.date-wrap') || e.target.closest('.calendar-pop')) {
+    return;
+  }
+
+  document.querySelectorAll('.calendar-pop').forEach(function(calendar) {
+    calendar.classList.add('hidden');
+  });
+});
+
 
 render();calc();
 if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.getRegistrations().then(rs=>rs.forEach(r=>r.unregister())).catch(()=>{}));}
