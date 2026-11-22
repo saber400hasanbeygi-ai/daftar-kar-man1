@@ -200,17 +200,50 @@ $('exportBackup').onclick=()=>{let blob=new Blob([JSON.stringify(data,null,2)],{
 $('importFile').onchange=e=>{let f=e.target.files[0];if(!f)return;let r=new FileReader();r.onload=()=>{try{let x=JSON.parse(r.result);if(!Array.isArray(x.jobs)||!Array.isArray(x.moves))throw Error();if(confirm('اطلاعات فعلی جایگزین شود؟')){data=x;save();alert('بازیابی انجام شد.');}}catch(err){alert('فایل پشتیبان معتبر نیست.');}};r.readAsText(f);};
 // تقویم انتخاب تاریخ شمسی
 const jalaliMonths=['فروردین','اردیبهشت','خرداد','تیر','مرداد','شهریور','مهر','آبان','آذر','دی','بهمن','اسفند'];
-function jalaliParts(date){let p=new Intl.DateTimeFormat('en-u-ca-persian',{year:'numeric',month:'numeric',day:'numeric',timeZone:'UTC'}).formatToParts(date),o={};p.forEach(x=>o[x.type]=Number(x.value));return o;}
-function jalaliToDate(y,m,d){let base=Date.UTC(y+621,2,19);for(let z=-5;z<370;z++){let dt=new Date(base+z*86400000),p=jalaliParts(dt);if(p.year===y&&p.month===m&&p.day===d)return dt;}return null;}
-function openJalaliPicker(id){let box=$('cal-'+id);document.querySelectorAll('.calendar-pop').forEach(x=>x.classList.add('hidden'));let val=dateClean($(id).value),a=val?val.split('/').map(Number):null,now=jalaliParts(new Date()),y=a?a[0]:now.year,m=a?a[1]:now.month,selected=a?a[2]:0;drawJalali(id,y,m,selected);box.classList.remove('hidden');}
-function drawJalali(id,y,m,selected){let box=$('cal-'+id),first=jalaliToDate(y,m,1);if(!first)return;let weekday=(first.getUTCDay()+1)%7,days=0;while(days<31&&jalaliToDate(y,m,days+1))days++;let html=`<div class="cal-head"><button type="button" onclick="shiftJalali('${id}',${y},${m},-1)">‹</button><b>${jalaliMonths[m-1]} ${y.toLocaleString('fa-IR')}</b><button type="button" onclick="shiftJalali('${id}',${y},${m},1)">›</button></div><div class="cal-grid">${['ش','ی','د','س','چ','پ','ج'].map(x=>`<span class="cal-week">${x}</span>`).join('')}`;for(let i=0;i<weekday;i++)html+='<span></span>';for(let d=1;d<=days;d++)html+=`<button type="button" class="cal-day ${d===selected?'selected':''}" onclick="chooseJalali('${id}',${y},${m},${d})">${d.toLocaleString('fa-IR')}</button>`;box.innerHTML=html+'</div>';}
-function shiftJalali(id,y,m,step){m+=step;if(m<1){m=12;y--;}if(m>12){m=1;y++;}drawJalali(id,y,m,0);}
-function chooseJalali(id,y,m,d){$(id).value=`${y}/${String(m).padStart(2,'0')}/${String(d).padStart(2,'0')}`;$('cal-'+id).classList.add('hidden');}
 
-document.addEventListener('click', function(e) {
-  if (e.target.closest('.date-wrap') || e.target.closest('.calendar-pop')) {
-    return;
+function drawJalali(id,y,m,selected){
+  let box=$('cal-'+id),first=jalaliToDate(y,m,1);
+  if(!first)return;
+  let weekday=(first.getUTCDay()+1)%7,days=0;
+  while(days<31&&jalaliToDate(y,m,days+1))days++;
+
+  let html=`<div class="cal-head">
+    <button type="button" onclick="event.stopPropagation();shiftJalali('${id}',${y},${m},-1)">‹</button>
+    <b>${jalaliMonths[m-1]} ${y.toLocaleString('fa-IR')}</b>
+    <button type="button" onclick="event.stopPropagation();shiftJalali('${id}',${y},${m},1)">›</button>
+  </div>
+  <div class="cal-grid">
+  ${['ش','ی','د','س','چ','پ','ج'].map(x=>`<span class="cal-week">${x}</span>`).join('')}`;
+
+  for(let i=0;i<weekday;i++)html+='<span></span>';
+
+  for(let d=1;d<=days;d++){
+    html+=`<button type="button" class="cal-day ${d===selected?'selected':''}"
+    onclick="event.stopPropagation();chooseJalali('${id}',${y},${m},${d})">${d.toLocaleString('fa-IR')}</button>`;
   }
+
+  box.innerHTML=html+'</div>';
+}
+
+function shiftJalali(id,y,m,step){
+  m+=step;
+  if(m<1){m=12;y--;}
+  if(m>12){m=1;y++;}
+  drawJalali(id,y,m,0);
+}
+
+function chooseJalali(id,y,m,d){
+  $(''+id).value=`${y}/${String(m).padStart(2,'0')}/${String(d).padStart(2,'0')}`;
+  $('cal-'+id).classList.add('hidden');
+}
+
+document.addEventListener('click',function(e){
+  if(e.target.closest('.date-wrap') || e.target.closest('.calendar-pop'))return;
+  document.querySelectorAll('.calendar-pop').forEach(function(calendar){
+    calendar.classList.add('hidden');
+  });
+});
+
 
   document.querySelectorAll('.calendar-pop').forEach(function(calendar) {
     calendar.classList.add('hidden');
