@@ -1,0 +1,9 @@
+{
+  "appId": "com.decoart.daftar",
+  "appName": "DecoArt",
+  "webDir": "www",
+  "bundledWebRuntime": false,
+  "android": {
+    "backgroundColor": "#0d0f12"
+  }
+}
