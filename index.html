@@ -201,25 +201,64 @@ $('importFile').onchange=e=>{let f=e.target.files[0];if(!f)return;let r=new File
 // تقویم انتخاب تاریخ شمسی
 const jalaliMonths=['فروردین','اردیبهشت','خرداد','تیر','مرداد','شهریور','مهر','آبان','آذر','دی','بهمن','اسفند'];
 
+function jalaliParts(date){
+  const parts=new Intl.DateTimeFormat('en-u-ca-persian',{
+    year:'numeric',month:'numeric',day:'numeric',timeZone:'UTC'
+  }).formatToParts(date);
+  const result={};
+  parts.forEach(p=>{
+    if(['year','month','day'].includes(p.type)) result[p.type]=Number(p.value);
+  });
+  return result;
+}
+
+function jalaliToDate(y,m,d){
+  const start=Date.UTC(y+621,2,15);
+  const end=Date.UTC(y+622,2,25);
+  for(let t=start;t<=end;t+=86400000){
+    const date=new Date(t);
+    const p=jalaliParts(date);
+    if(p.year===y&&p.month===m&&p.day===d)return date;
+  }
+  return null;
+}
+
+function openJalaliPicker(id){
+  document.querySelectorAll('.calendar-pop').forEach(x=>x.classList.add('hidden'));
+  const input=$(id);
+  const box=$('cal-'+id);
+  let value=dateClean(input.value),y,m,d;
+  if(value){
+    [y,m,d]=value.split('/').map(Number);
+  }else{
+    const p=jalaliParts(new Date());
+    y=p.year;m=p.month;d=p.day;
+  }
+  drawJalali(id,y,m,d);
+  box.classList.remove('hidden');
+}
+
 function drawJalali(id,y,m,selected){
-  let box=$('cal-'+id),first=jalaliToDate(y,m,1);
+  const box=$('cal-'+id);
+  const first=jalaliToDate(y,m,1);
   if(!first)return;
-  let weekday=(first.getUTCDay()+1)%7,days=0;
+
+  const weekday=(first.getUTCDay()+1)%7;
+  let days=0;
   while(days<31&&jalaliToDate(y,m,days+1))days++;
 
   let html=`<div class="cal-head">
     <button type="button" onclick="event.stopPropagation();shiftJalali('${id}',${y},${m},-1)">‹</button>
     <b>${jalaliMonths[m-1]} ${y.toLocaleString('fa-IR')}</b>
     <button type="button" onclick="event.stopPropagation();shiftJalali('${id}',${y},${m},1)">›</button>
-  </div>
-  <div class="cal-grid">
+  </div><div class="cal-grid">
   ${['ش','ی','د','س','چ','پ','ج'].map(x=>`<span class="cal-week">${x}</span>`).join('')}`;
 
   for(let i=0;i<weekday;i++)html+='<span></span>';
 
   for(let d=1;d<=days;d++){
     html+=`<button type="button" class="cal-day ${d===selected?'selected':''}"
-    onclick="event.stopPropagation();chooseJalali('${id}',${y},${m},${d})">${d.toLocaleString('fa-IR')}</button>`;
+      onclick="event.stopPropagation();chooseJalali('${id}',${y},${m},${d})">${d.toLocaleString('fa-IR')}</button>`;
   }
 
   box.innerHTML=html+'</div>';
@@ -233,22 +272,19 @@ function shiftJalali(id,y,m,step){
 }
 
 function chooseJalali(id,y,m,d){
-  $(''+id).value=`${y}/${String(m).padStart(2,'0')}/${String(d).padStart(2,'0')}`;
+  $(id).value=`${y}/${String(m).padStart(2,'0')}/${String(d).padStart(2,'0')}`;
   $('cal-'+id).classList.add('hidden');
 }
 
 document.addEventListener('click',function(e){
-  if(e.target.closest('.date-wrap') || e.target.closest('.calendar-pop'))return;
-  document.querySelectorAll('.calendar-pop').forEach(function(calendar){
+  if(e.target.closest('.date-wrap')||e.target.closest('.calendar-pop'))return;
+  document.querySelectorAll('.calendar-pop').forEach(calendar=>{
     calendar.classList.add('hidden');
   });
 });
 
-
-  document.querySelectorAll('.calendar-pop').forEach(function(calendar) {
-    calendar.classList.add('hidden');
-  });
-});
+render();
+calc();
 
 
 render();calc();
